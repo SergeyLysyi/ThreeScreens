@@ -26,9 +26,7 @@ public class NoteListAdapter extends ArrayAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
 
-        ViewHolder holder;
-
-        final Note note = (Note) getItem(position);
+        final ViewHolder holder;
 
         if (convertView == null) {
             convertView = inflater.inflate(resource, parent, false);
@@ -40,13 +38,13 @@ public class NoteListAdapter extends ArrayAdapter {
             convertView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    ((MainActivity) v.getContext()).editNote(note);
+                    ((MainActivity) v.getContext()).editNote((Note) getItem(holder.position));
                 }
             });
             convertView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
-                    ((MainActivity) v.getContext()).deleteNote(note);
+                    ((MainActivity) v.getContext()).deleteNote((Note) getItem(holder.position));
                     return true;
                 }
             });
@@ -55,6 +53,8 @@ public class NoteListAdapter extends ArrayAdapter {
             holder = (ViewHolder) convertView.getTag();
         }
 
+        Note note = (Note) getItem(position);
+        holder.position = position;
         holder.header.setText(note.getHeader());
         holder.body.setText(note.getBody());
         holder.rectangle.setBackgroundColor(note.getColor());
@@ -63,6 +63,7 @@ public class NoteListAdapter extends ArrayAdapter {
     }
 
     private static class ViewHolder {
+        int position;
         TextView header;
         TextView body;
         ImageView rectangle;
