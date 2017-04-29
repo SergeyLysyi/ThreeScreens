@@ -31,6 +31,7 @@ public class NoteListAdapter extends ArrayAdapter {
         if (convertView == null) {
             convertView = inflater.inflate(resource, parent, false);
             holder = new ViewHolder();
+            holder.helper = ((HelperTextView) convertView.findViewById(R.id.helper));
             holder.header = ((TextView) convertView.findViewById(R.id.header));
             holder.body = ((TextView) convertView.findViewById(R.id.body));
             holder.rectangle = ((ImageView) convertView.findViewById(R.id.color));
@@ -64,6 +65,7 @@ public class NoteListAdapter extends ArrayAdapter {
 
     private static class ViewHolder {
         int position;
+        HelperTextView helper;
         TextView header;
         TextView body;
         ImageView rectangle;
