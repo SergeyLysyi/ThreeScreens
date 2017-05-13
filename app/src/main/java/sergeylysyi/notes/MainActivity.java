@@ -5,7 +5,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -38,7 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import sergeylysyi.notes.note.ArrayNoteJson;
-import sergeylysyi.notes.note.DialogInvoker;
+import sergeylysyi.notes.Dialogs.DialogInvoker;
 import sergeylysyi.notes.note.Note;
 import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
@@ -85,10 +84,10 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
         int prefOrderOrdinal = settings.getInt("sort_preferred_order", -1);
         int prefFieldOrdinal = settings.getInt("sort_preferred_field", -1);
-        if (prefOrderOrdinal>-1) {
+        if (prefOrderOrdinal > -1) {
             sortOrderPreference = NoteSortOrder.values()[prefOrderOrdinal];
         }
-        if (prefFieldOrdinal>-1) {
+        if (prefFieldOrdinal > -1) {
             sortFieldPreference = NoteSortField.values()[prefFieldOrdinal];
         }
 
@@ -372,11 +371,18 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                     searchMenuItem.setIcon(getResources().getDrawable(android.R.drawable.ic_menu_close_clear_cancel));
                     dialogInvoker.searchDialog(this);
                 } else {
-                    // clear search props here
+                    // clear search properties here
                     search_on = false;
                     searchMenuItem.setIcon(getResources().getDrawable(android.R.drawable.ic_menu_search));
                     reloadNotes();
                 }
+                break;
+            case R.id.action_manage_filters:
+                final String[] names = new String[20];
+                for (int i = 0; i < 20; i++) {
+                    names[i] = "Filter" + i;
+                }
+                dialogInvoker.manageFiltersDialog(names, this);
                 break;
         }
         return super.onOptionsItemSelected(item);
@@ -458,12 +464,36 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         if (!(result.title == null && result.description == null)) {
             updateNotesByQuery(saver.new Query().withSubstring(result.title, result.description));
         } else {
-            onSearchCancel();
+            onSortCancel();
         }
     }
 
     @Override
-    public void onSearchCancel() {
+    public void onEditFilterEntries(int[] deletedEntriesIndexes) {
+        if (deletedEntriesIndexes.length >0){
+            System.out.println("Deleted:");
+            for (int deletedEntriesIndex : deletedEntriesIndexes) {
+                System.out.println(deletedEntriesIndex);
+            }
+        }
+//        System.out.println("Entries:");
+//        for (String entry : entries) {
+//            System.out.println(entry);
+//        }
+    }
+
+    @Override
+    public void onAddFilterEntry(String entryName) {
+        System.out.println("new entry name is " + entryName);
+    }
+
+    @Override
+    public void onApplyFilterEntry(String entryName) {
+        System.out.println("chosen entry is " + entryName);
+    }
+
+    @Override
+    public void onSortCancel() {
         search_on = false;
         searchMenuItem.setIcon(getResources().getDrawable(android.R.drawable.ic_menu_search));
     }

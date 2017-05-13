@@ -1,4 +1,4 @@
-package sergeylysyi.notes.note;
+package sergeylysyi.notes.Dialogs;
 
 import android.app.Activity;
 import android.app.Dialog;
@@ -6,10 +6,14 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.support.annotation.IdRes;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.widget.PopupMenu;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -17,6 +21,8 @@ import android.widget.TimePicker;
 
 import java.text.SimpleDateFormat;
 import java.util.GregorianCalendar;
+import java.util.HashSet;
+import java.util.Set;
 
 import sergeylysyi.notes.MainActivity;
 import sergeylysyi.notes.R;
@@ -36,10 +42,10 @@ public class DialogInvoker {
         noteSortOrder[0] = orderPreference;
         noteSortField[0] = fieldPreference;
         Dialog d = new AlertDialog.Builder(context, 0)
-                .setTitle("Sort")
+                .setTitle(R.string.dialog_sort_title)
                 .setView(R.layout.sort_layout)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Sort", new DialogInterface.OnClickListener() {
+                .setNegativeButton(R.string.dialog_negative_button, null)
+                .setPositiveButton(R.string.dialog_sort_positive_button, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 SortDialogResult result = new SortDialogResult();
@@ -93,10 +99,10 @@ public class DialogInvoker {
         LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         final View v = inflater.inflate(R.layout.search_layout, null);
         final Dialog d = new AlertDialog.Builder(context, 0)
-                .setTitle("Search")
+                .setTitle(R.string.dialog_search_title)
                 .setView(v)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Search", new DialogInterface.OnClickListener() {
+                .setNegativeButton(R.string.dialog_negative_button, null)
+                .setPositiveButton(R.string.dialog_search_positive_button, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         String patternTitle = ((EditText) v.findViewById(R.id.search_field_title))
@@ -110,15 +116,13 @@ public class DialogInvoker {
                             result.title = patternTitle;
                             result.description = patternDescription;
                             listener.onSearchDialogResult(result);
-                        } else {
-                            System.out.println("empty search pattern");
                         }
                     }
                 })
                 .setOnCancelListener(new DialogInterface.OnCancelListener() {
                     @Override
                     public void onCancel(DialogInterface dialog) {
-                        listener.onSearchCancel();
+                        listener.onSortCancel();
                     }
                 })
                 .create();
@@ -137,10 +141,10 @@ public class DialogInvoker {
         after[0] = null;
         before[0] = null;
         final Dialog d = new AlertDialog.Builder(context, 0)
-                .setTitle("Filter")
+                .setTitle(R.string.dialog_filter_title)
                 .setView(v)
-                .setNegativeButton("Cancel", null)
-                .setPositiveButton("Filter", new DialogInterface.OnClickListener() {
+                .setNegativeButton(R.string.dialog_negative_button, null)
+                .setPositiveButton(R.string.dialog_filter_positive_button, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         FilterDialogResult result = new FilterDialogResult();
@@ -159,7 +163,7 @@ public class DialogInvoker {
             @Override
             public void onClick(View v) {
                 new AlertDialog.Builder(context, 0)
-                        .setTitle("Pick Time")
+                        .setTitle(R.string.dialog_pick_time_title)
                         .setItems(fields, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
@@ -167,7 +171,7 @@ public class DialogInvoker {
                                 tv.setText(fields[which]);
                             }
                         })
-                        .setNegativeButton("Cancel", null)
+                        .setNegativeButton(R.string.dialog_negative_button, null)
                         .create()
                         .show();
             }
@@ -180,10 +184,10 @@ public class DialogInvoker {
                 //TODO:set hour, minute
                 final TextView tv = (TextView) v;
                 new AlertDialog.Builder(context, 0)
-                        .setTitle("Pick Time")
+                        .setTitle(R.string.dialog_pick_time_title)
                         .setView(tp)
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        .setNegativeButton(R.string.dialog_negative_button, null)
+                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (after[0] == null) {
@@ -205,10 +209,10 @@ public class DialogInvoker {
                 //TODO: set date
                 final TextView tv = (TextView) v;
                 new AlertDialog.Builder(context, 0)
-                        .setTitle("Pick Date")
+                        .setTitle(R.string.dialog_pick_date)
                         .setView(dp)
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        .setNegativeButton(R.string.dialog_negative_button, null)
+                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (after[0] == null) {
@@ -230,10 +234,10 @@ public class DialogInvoker {
                 //TODO:set hour, minute
                 final TextView tv = (TextView) v;
                 new AlertDialog.Builder(context, 0)
-                        .setTitle("Pick Time")
+                        .setTitle(R.string.dialog_pick_time_title)
                         .setView(tp)
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        .setNegativeButton(R.string.dialog_negative_button, null)
+                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (before[0] == null) {
@@ -255,10 +259,10 @@ public class DialogInvoker {
                 //TODO: set date
                 final TextView tv = (TextView) v;
                 new AlertDialog.Builder(context, 0)
-                        .setTitle("Pick Date")
+                        .setTitle(R.string.dialog_pick_date)
                         .setView(dp)
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        .setNegativeButton(R.string.dialog_negative_button, null)
+                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 if (before[0] == null) {
@@ -274,9 +278,122 @@ public class DialogInvoker {
         });
     }
 
+    public void manageFiltersDialog(final String[] entriesNames, final ManageFiltersResultListener listener) {
+        final Set<Integer> deletedFilters = new HashSet<>();
+        final boolean[] edited = new boolean[1];
+        final AlertDialog d = new AlertDialog.Builder(context)
+                .setTitle(R.string.dialog_manage_filters_title)
+                .setNegativeButton(R.string.dialog_close, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if (edited[0] || !deletedFilters.isEmpty()) {
+                            int[] deleted = new int[deletedFilters.size()];
+                            int i = 0;
+                            for (Integer index : deletedFilters) {
+                                deleted[i] = index;
+                                i++;
+                            }
+                            listener.onEditFilterEntries(deleted);
+                        }
+                    }
+                })
+                .setNeutralButton(R.string.dialog_manage_filters_add, null)
+                .setItems(entriesNames, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        listener.onApplyFilterEntry(entriesNames[which]);
+                    }
+                })
+                .create();
+        d.setOnShowListener(new DialogInterface.OnShowListener() {
+            @Override
+            public void onShow(DialogInterface dialog) {
+                d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(
+                        new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                new InputDialog(context, entriesNames, new Callback() {
+                                    @Override
+                                    public void call(Object result) {
+                                        d.dismiss();
+                                        listener.onAddFilterEntry((String) result);
+                                    }
+                                }).show();
+                            }
+                        });
+
+                ListView lv = d.getListView();
+                lv.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+                    @Override
+                    public boolean onItemLongClick(AdapterView<?> parent, final View view, final int position, final long id) {
+                        PopupMenu menu = new PopupMenu(context, view);
+                        if (!deletedFilters.contains(position)) {
+                            menu.getMenuInflater().inflate(R.menu.dialog_filter_item_actions_menu, menu.getMenu());
+                            menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                                @Override
+                                public boolean onMenuItemClick(MenuItem item) {
+                                    switch (item.getItemId()) {
+                                        case R.id.menu_delete:
+                                            System.out.println("delete");
+                                            ((TextView) view).setText(
+                                                    String.format("%s %s",
+                                                            context.getString(R.string.dialog_manage_filter_deleted_prefix),
+                                                            ((TextView) view).getText()));
+                                            view.setAlpha(view.getAlpha() * 0.5f);
+                                            deletedFilters.add(position);
+                                            return true;
+                                        case R.id.menu_edit:
+                                            System.out.println("edit");
+                                            String[] forbidden = new String[entriesNames.length - 1];
+                                            System.arraycopy(entriesNames, 0, forbidden, 0, position);
+                                            System.arraycopy(entriesNames, position + 1, forbidden, position, entriesNames.length - position);
+                                            new InputDialog(context, forbidden, new Callback() {
+                                                @Override
+                                                public void call(Object result) {
+                                                    String name = (String) result;
+                                                    if (!entriesNames[position].equals(name)) {
+                                                        edited[0] = true;
+                                                        entriesNames[position] = name;
+                                                    }
+                                                }
+                                            }).show();
+                                            return true;
+                                    }
+                                    System.out.println("not handled");
+                                    return false;
+                                }
+                            });
+                        } else {
+                            menu.getMenuInflater().inflate(R.menu.dialog_filter_deleted_item_actions, menu.getMenu());
+                            menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                                @Override
+                                public boolean onMenuItemClick(MenuItem item) {
+                                    switch (item.getItemId()) {
+                                        case R.id.menu_restore:
+                                            System.out.println("restore");
+                                            ((TextView) view).setText(entriesNames[position]);
+                                            view.setAlpha(view.getAlpha() * 1/0.5f);
+                                            deletedFilters.remove(position);
+                                            return true;
+                                    }
+                                    System.out.println("not handled");
+                                    return false;
+                                }
+                            });
+                        }
+                        menu.show();
+                        return true;
+                    }
+                });
+            }
+        });
+        d.show();
+    }
+
     public interface SortResultListener {
         void onSortDialogResult(SortDialogResult result);
-        void onSearchCancel();
+
+        void onSortCancel();
     }
 
     public interface FilterResultListener {
@@ -287,7 +404,19 @@ public class DialogInvoker {
         void onSearchDialogResult(SearchDialogResult result);
     }
 
-    public interface ResultListener extends SortResultListener, FilterResultListener, SearchResultListener {
+    public interface ManageFiltersResultListener {
+        void onEditFilterEntries(int[] deletedEntriesIndexes);
+
+        void onAddFilterEntry(String newEntryName);
+
+        void onApplyFilterEntry(String entryName);
+    }
+
+    public interface ResultListener extends
+            SortResultListener,
+            FilterResultListener,
+            SearchResultListener,
+            ManageFiltersResultListener {
     }
 
     public static class SortDialogResult {
