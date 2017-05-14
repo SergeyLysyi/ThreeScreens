@@ -36,8 +36,8 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-import sergeylysyi.notes.note.ArrayNoteJson;
 import sergeylysyi.notes.Dialogs.DialogInvoker;
+import sergeylysyi.notes.note.ArrayNoteJson;
 import sergeylysyi.notes.note.Note;
 import sergeylysyi.notes.note.NoteListAdapter;
 import sergeylysyi.notes.note.NoteSaver;
@@ -47,17 +47,22 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private static final int EXPORT_REQUEST_CODE = 11;
     private static final int REQUEST_WRITE_STORAGE = 13;
 
+    private static final String SHARED_PREFERENCES_VERSION = "1";
+    private static final String KEY_PREFIX = FiltersHolder.class.getName().concat("_");
+    private static final String KEY_VERSION = KEY_PREFIX.concat("version");
+    private static final String KEY_FILTER_SAVED = KEY_PREFIX.concat("filter_saved");
+
     private List<Note> allNotes = new ArrayList<>();
     private NoteListAdapter adapter;
     private NoteSaver saver;
 
     private DialogInvoker dialogInvoker;
 
+    private FiltersHolder filtersHolder;
 
-    private NoteSortOrder defaultSortOrderPreference = NoteSortOrder.descending;
-    private NoteSortField defaultSortFieldPreference = NoteSortField.created;
-    private NoteSortOrder sortOrderPreference = defaultSortOrderPreference;
-    private NoteSortField sortFieldPreference = defaultSortFieldPreference;
+    private NoteSaver.NoteSortOrder defaultSortOrderPreference = NoteSaver.NoteSortOrder.descending;
+    private NoteSaver.NoteSortField defaultSortFieldPreference = NoteSaver.NoteSortField.created;
+    private NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
 
     private boolean search_on = false;
     private MenuItem searchMenuItem = null;
@@ -82,13 +87,18 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
         SharedPreferences settings = getPreferences(MODE_PRIVATE);
 
-        int prefOrderOrdinal = settings.getInt("sort_preferred_order", -1);
-        int prefFieldOrdinal = settings.getInt("sort_preferred_field", -1);
-        if (prefOrderOrdinal > -1) {
-            sortOrderPreference = NoteSortOrder.values()[prefOrderOrdinal];
-        }
-        if (prefFieldOrdinal > -1) {
-            sortFieldPreference = NoteSortField.values()[prefFieldOrdinal];
+        String version = settings.getString(KEY_VERSION, null);
+        boolean filterSaved = settings.getBoolean(KEY_FILTER_SAVED, false);
+        if (filterSaved) {
+            System.out.println("filters restored");
+            filtersHolder = FiltersHolder.fromSettings(settings);
+        } else {
+            System.out.println("new filters");
+            filtersHolder = new FiltersHolder(
+                    defaultSortFieldPreference,
+                    defaultSortOrderPreference,
+                    defaultDateFieldPreference
+            );
         }
 
         reloadNotes();
@@ -152,10 +162,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void reloadNotes() {
-        DialogInvoker.SortDialogResult reloadQuery = new DialogInvoker.SortDialogResult();
-        reloadQuery.order = sortOrderPreference;
-        reloadQuery.field = sortFieldPreference;
-        onSortDialogResult(reloadQuery);
+        onSortDialogResult(filtersHolder.getCurrentFilter());
     }
 
     private void updateNotesByQuery(NoteSaver.Query query) {
@@ -346,8 +353,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         int id = item.getItemId();
         switch (id) {
             case R.id.action_refresh:
-                sortFieldPreference = defaultSortFieldPreference;
-                sortOrderPreference = defaultSortOrderPreference;
+//                sortFieldPreference = defaultSortFieldPreference;
+//                sortOrderPreference = defaultSortOrderPreference;
+                filtersHolder.reset();
                 reloadNotes();
                 break;
             case R.id.action_export:
@@ -357,7 +365,8 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                 launchPickFile();
                 break;
             case R.id.action_sort:
-                dialogInvoker.sortDialog(sortOrderPreference, sortFieldPreference, this);
+                NoteSaver.QueryFilter queryFilter = filtersHolder.getCurrentFilter();
+                dialogInvoker.sortDialog(queryFilter.sortField, queryFilter.sortOrder, this);
                 break;
             case R.id.action_filter:
                 dialogInvoker.filterDialog(this);
@@ -378,11 +387,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                 }
                 break;
             case R.id.action_manage_filters:
-                final String[] names = new String[20];
-                for (int i = 0; i < 20; i++) {
-                    names[i] = "Filter" + i;
-                }
-                dialogInvoker.manageFiltersDialog(names, this);
+                dialogInvoker.manageFiltersDialog(filtersHolder.getFilterNames(), this);
                 break;
         }
         return super.onOptionsItemSelected(item);
@@ -392,10 +397,11 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     protected void onStop() {
         SharedPreferences prefs = getPreferences(MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
-        editor.putInt("prefs_ver", 1);
-        editor.putInt("sort_preferred_order", sortOrderPreference.ordinal());
-        editor.putInt("sort_preferred_field", sortFieldPreference.ordinal());
+        editor.putString(KEY_VERSION, SHARED_PREFERENCES_VERSION);
+        editor.putBoolean(KEY_FILTER_SAVED, true);
+        filtersHolder.storeToPreferences(prefs);
         editor.apply();
+        System.out.println("prefs saved");
         super.onStop();
     }
 
@@ -406,57 +412,13 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     @Override
-    public void onSortDialogResult(DialogInvoker.SortDialogResult result) {
-        String column;
-        String order;
-        switch (result.field) {
-            case title:
-                column = NoteSaver.COLUMN_TITLE;
-                break;
-            case created:
-                column = NoteSaver.COLUMN_CREATED;
-                break;
-            case edited:
-                column = NoteSaver.COLUMN_EDITED;
-                break;
-            case viewed:
-                column = NoteSaver.COLUMN_VIEWED;
-                break;
-            default:
-                throw new IllegalArgumentException("no matching case for argument \"byField\"");
-        }
-        switch (result.order) {
-            case ascending:
-                order = NoteSaver.SORT_ORDER_ASCENDING;
-                break;
-            case descending:
-                order = NoteSaver.SORT_ORDER_DESCENDING;
-                break;
-            default:
-                throw new IllegalArgumentException("no matching case for argument \"withOrder\" ");
-        }
-        sortFieldPreference = result.field;
-        sortOrderPreference = result.order;
-        updateNotesByQuery(saver.new Query().sorted(column, order));
+    public void onSortDialogResult(NoteSaver.QueryFilter result) {
+        updateNotesByQuery(saver.new Query().sorted(result.sortField, result.sortOrder));
     }
 
     @Override
-    public void onFilterDialogResult(DialogInvoker.FilterDialogResult result) {
-        String fieldRequest;
-        switch (result.dateField) {
-            case created:
-                fieldRequest = NoteSaver.COLUMN_CREATED;
-                break;
-            case edited:
-                fieldRequest = NoteSaver.COLUMN_EDITED;
-                break;
-            case viewed:
-                fieldRequest = NoteSaver.COLUMN_VIEWED;
-                break;
-            default:
-                throw new IllegalArgumentException("no matching case for argument \"field\"");
-        }
-        updateNotesByQuery(saver.new Query().betweenDatesOf(fieldRequest, result.after, result.before));
+    public void onFilterDialogResult(NoteSaver.QueryFilter result) {
+        updateNotesByQuery(saver.new Query().betweenDatesOf(result.dateField, result.after, result.before));
     }
 
     @Override
@@ -470,26 +432,20 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
     @Override
     public void onEditFilterEntries(int[] deletedEntriesIndexes) {
-        if (deletedEntriesIndexes.length >0){
-            System.out.println("Deleted:");
-            for (int deletedEntriesIndex : deletedEntriesIndexes) {
-                System.out.println(deletedEntriesIndex);
-            }
-        }
-//        System.out.println("Entries:");
-//        for (String entry : entries) {
-//            System.out.println(entry);
-//        }
+        filtersHolder.remove(deletedEntriesIndexes);
     }
 
     @Override
     public void onAddFilterEntry(String entryName) {
         System.out.println("new entry name is " + entryName);
+        filtersHolder.add(entryName);
     }
 
     @Override
     public void onApplyFilterEntry(String entryName) {
         System.out.println("chosen entry is " + entryName);
+        filtersHolder.apply(entryName);
+        //TODO: reload notes
     }
 
     @Override
@@ -498,9 +454,4 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         searchMenuItem.setIcon(getResources().getDrawable(android.R.drawable.ic_menu_search));
     }
 
-    public enum NoteSortField {title, created, edited, viewed}
-
-    public enum NoteSortOrder {ascending, descending}
-
-    public enum NoteDateField {created, edited, viewed}
 }

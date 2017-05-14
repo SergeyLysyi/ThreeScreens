@@ -24,8 +24,8 @@ import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.Set;
 
-import sergeylysyi.notes.MainActivity;
 import sergeylysyi.notes.R;
+import sergeylysyi.notes.note.NoteSaver;
 
 public class DialogInvoker {
 
@@ -35,10 +35,10 @@ public class DialogInvoker {
         this.context = context;
     }
 
-    public void sortDialog(MainActivity.NoteSortOrder orderPreference, MainActivity.NoteSortField fieldPreference,
+    public void sortDialog(NoteSaver.NoteSortField fieldPreference, NoteSaver.NoteSortOrder orderPreference,
                            final ResultListener listener) {
-        final MainActivity.NoteSortOrder[] noteSortOrder = new MainActivity.NoteSortOrder[1];
-        final MainActivity.NoteSortField[] noteSortField = new MainActivity.NoteSortField[1];
+        final NoteSaver.NoteSortOrder[] noteSortOrder = new NoteSaver.NoteSortOrder[1];
+        final NoteSaver.NoteSortField[] noteSortField = new NoteSaver.NoteSortField[1];
         noteSortOrder[0] = orderPreference;
         noteSortField[0] = fieldPreference;
         Dialog d = new AlertDialog.Builder(context, 0)
@@ -48,9 +48,9 @@ public class DialogInvoker {
                 .setPositiveButton(R.string.dialog_sort_positive_button, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                SortDialogResult result = new SortDialogResult();
-                                result.order = noteSortOrder[0];
-                                result.field = noteSortField[0];
+                                NoteSaver.QueryFilter result = new NoteSaver.QueryFilter();
+                                result.sortOrder = noteSortOrder[0];
+                                result.sortField = noteSortField[0];
                                 listener.onSortDialogResult(result);
                             }
                         }
@@ -64,10 +64,10 @@ public class DialogInvoker {
             public void onCheckedChanged(RadioGroup group, @IdRes int checkedId) {
                 switch (checkedId) {
                     case R.id.ascending:
-                        noteSortOrder[0] = MainActivity.NoteSortOrder.ascending;
+                        noteSortOrder[0] = NoteSaver.NoteSortOrder.ascending;
                         break;
                     case R.id.descending:
-                        noteSortOrder[0] = MainActivity.NoteSortOrder.descending;
+                        noteSortOrder[0] = NoteSaver.NoteSortOrder.descending;
                         break;
                 }
             }
@@ -79,16 +79,16 @@ public class DialogInvoker {
             public void onCheckedChanged(RadioGroup group, @IdRes int checkedId) {
                 switch (column.getCheckedRadioButtonId()) {
                     case R.id.sort_by_title:
-                        noteSortField[0] = MainActivity.NoteSortField.title;
+                        noteSortField[0] = NoteSaver.NoteSortField.title;
                         break;
                     case R.id.sort_by_created:
-                        noteSortField[0] = MainActivity.NoteSortField.created;
+                        noteSortField[0] = NoteSaver.NoteSortField.created;
                         break;
                     case R.id.sort_by_edited:
-                        noteSortField[0] = MainActivity.NoteSortField.edited;
+                        noteSortField[0] = NoteSaver.NoteSortField.edited;
                         break;
                     case R.id.sort_by_Viewed:
-                        noteSortField[0] = MainActivity.NoteSortField.viewed;
+                        noteSortField[0] = NoteSaver.NoteSortField.viewed;
                         break;
                 }
             }
@@ -132,12 +132,12 @@ public class DialogInvoker {
     public void filterDialog(final ResultListener listener) {
         LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         final View v = inflater.inflate(R.layout.filter_layout, null);
-        final MainActivity.NoteDateField[] dateField = new MainActivity.NoteDateField[1];
+        final NoteSaver.NoteDateField[] dateField = new NoteSaver.NoteDateField[1];
         final GregorianCalendar[] after = new GregorianCalendar[1];
         final GregorianCalendar[] before = new GregorianCalendar[1];
         final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-        dateField[0] = MainActivity.NoteDateField.created;
+        dateField[0] = NoteSaver.NoteDateField.created;
         after[0] = null;
         before[0] = null;
         final Dialog d = new AlertDialog.Builder(context, 0)
@@ -147,7 +147,7 @@ public class DialogInvoker {
                 .setPositiveButton(R.string.dialog_filter_positive_button, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        FilterDialogResult result = new FilterDialogResult();
+                        NoteSaver.QueryFilter result = new NoteSaver.QueryFilter();
                         result.dateField = dateField[0];
                         result.after = after[0];
                         result.before = before[0];
@@ -167,7 +167,7 @@ public class DialogInvoker {
                         .setItems(fields, new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                dateField[0] = MainActivity.NoteDateField.values()[which];
+                                dateField[0] = NoteSaver.NoteDateField.values()[which];
                                 tv.setText(fields[which]);
                             }
                         })
@@ -280,6 +280,8 @@ public class DialogInvoker {
 
     public void manageFiltersDialog(final String[] entriesNames, final ManageFiltersResultListener listener) {
         final Set<Integer> deletedFilters = new HashSet<>();
+        final String[] localNames = new String[entriesNames.length];
+        System.arraycopy(entriesNames, 0, localNames, 0, localNames.length);
         final boolean[] edited = new boolean[1];
         final AlertDialog d = new AlertDialog.Builder(context)
                 .setTitle(R.string.dialog_manage_filters_title)
@@ -298,7 +300,7 @@ public class DialogInvoker {
                     }
                 })
                 .setNeutralButton(R.string.dialog_manage_filters_add, null)
-                .setItems(entriesNames, new DialogInterface.OnClickListener() {
+                .setItems(localNames, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         listener.onApplyFilterEntry(entriesNames[which]);
@@ -334,19 +336,16 @@ public class DialogInvoker {
                                 public boolean onMenuItemClick(MenuItem item) {
                                     switch (item.getItemId()) {
                                         case R.id.menu_delete:
-                                            System.out.println("delete");
-                                            ((TextView) view).setText(
-                                                    String.format("%s %s",
-                                                            context.getString(R.string.dialog_manage_filter_deleted_prefix),
-                                                            ((TextView) view).getText()));
-                                            view.setAlpha(view.getAlpha() * 0.5f);
+                                            localNames[position] = String.format("%s %s",
+                                                    context.getString(R.string.dialog_manage_filter_deleted_prefix),
+                                                    entriesNames[position]);
+                                            ((TextView) view).setText(localNames[position]);
                                             deletedFilters.add(position);
                                             return true;
                                         case R.id.menu_edit:
-                                            System.out.println("edit");
                                             String[] forbidden = new String[entriesNames.length - 1];
                                             System.arraycopy(entriesNames, 0, forbidden, 0, position);
-                                            System.arraycopy(entriesNames, position + 1, forbidden, position, entriesNames.length - position);
+                                            System.arraycopy(entriesNames, position + 1, forbidden, position, forbidden.length - position);
                                             new InputDialog(context, forbidden, new Callback() {
                                                 @Override
                                                 public void call(Object result) {
@@ -354,12 +353,13 @@ public class DialogInvoker {
                                                     if (!entriesNames[position].equals(name)) {
                                                         edited[0] = true;
                                                         entriesNames[position] = name;
+                                                        localNames[position] = entriesNames[position];
+                                                        ((TextView) view).setText(localNames[position]);
                                                     }
                                                 }
                                             }).show();
                                             return true;
                                     }
-                                    System.out.println("not handled");
                                     return false;
                                 }
                             });
@@ -370,13 +370,10 @@ public class DialogInvoker {
                                 public boolean onMenuItemClick(MenuItem item) {
                                     switch (item.getItemId()) {
                                         case R.id.menu_restore:
-                                            System.out.println("restore");
                                             ((TextView) view).setText(entriesNames[position]);
-                                            view.setAlpha(view.getAlpha() * 1/0.5f);
                                             deletedFilters.remove(position);
                                             return true;
                                     }
-                                    System.out.println("not handled");
                                     return false;
                                 }
                             });
@@ -391,13 +388,13 @@ public class DialogInvoker {
     }
 
     public interface SortResultListener {
-        void onSortDialogResult(SortDialogResult result);
+        void onSortDialogResult(NoteSaver.QueryFilter result);
 
         void onSortCancel();
     }
 
     public interface FilterResultListener {
-        void onFilterDialogResult(FilterDialogResult result);
+        void onFilterDialogResult(NoteSaver.QueryFilter result);
     }
 
     public interface SearchResultListener {
@@ -417,17 +414,6 @@ public class DialogInvoker {
             FilterResultListener,
             SearchResultListener,
             ManageFiltersResultListener {
-    }
-
-    public static class SortDialogResult {
-        public MainActivity.NoteSortOrder order;
-        public MainActivity.NoteSortField field;
-    }
-
-    public static class FilterDialogResult {
-        public MainActivity.NoteDateField dateField;
-        public GregorianCalendar after;
-        public GregorianCalendar before;
     }
 
     public static class SearchDialogResult {

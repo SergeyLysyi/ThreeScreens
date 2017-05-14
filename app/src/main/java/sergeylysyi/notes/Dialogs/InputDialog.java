@@ -31,7 +31,7 @@ class InputDialog {
         dialog.setOnShowListener(new DialogInterface.OnShowListener() {
             @Override
             public void onShow(final DialogInterface d) {
-                Button positiveButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+                Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
                 positiveButton.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
