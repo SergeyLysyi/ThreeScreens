@@ -35,12 +35,12 @@ public class DialogInvoker {
         this.context = context;
     }
 
-    public void sortDialog(NoteSaver.NoteSortField fieldPreference, NoteSaver.NoteSortOrder orderPreference,
+    public void sortDialog(NoteSaver.NoteSortField currentSortField, NoteSaver.NoteSortOrder currentSortOrder,
                            final ResultListener listener) {
         final NoteSaver.NoteSortOrder[] noteSortOrder = new NoteSaver.NoteSortOrder[1];
         final NoteSaver.NoteSortField[] noteSortField = new NoteSaver.NoteSortField[1];
-        noteSortOrder[0] = orderPreference;
-        noteSortField[0] = fieldPreference;
+        noteSortOrder[0] = currentSortOrder;
+        noteSortField[0] = currentSortField;
         Dialog d = new AlertDialog.Builder(context, 0)
                 .setTitle(R.string.dialog_sort_title)
                 .setView(R.layout.sort_layout)
@@ -304,6 +304,15 @@ public class DialogInvoker {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         listener.onApplyFilterEntry(entriesNames[which]);
+                        if (edited[0] || !deletedFilters.isEmpty()) {
+                            int[] deleted = new int[deletedFilters.size()];
+                            int i = 0;
+                            for (Integer index : deletedFilters) {
+                                deleted[i] = index;
+                                i++;
+                            }
+                            listener.onEditFilterEntries(deleted);
+                        }
                     }
                 })
                 .create();
@@ -319,6 +328,15 @@ public class DialogInvoker {
                                     public void call(Object result) {
                                         d.dismiss();
                                         listener.onAddFilterEntry((String) result);
+                                        if (edited[0] || !deletedFilters.isEmpty()) {
+                                            int[] deleted = new int[deletedFilters.size()];
+                                            int i = 0;
+                                            for (Integer index : deletedFilters) {
+                                                deleted[i] = index;
+                                                i++;
+                                            }
+                                            listener.onEditFilterEntries(deleted);
+                                        }
                                     }
                                 }).show();
                             }
@@ -346,7 +364,7 @@ public class DialogInvoker {
                                             String[] forbidden = new String[entriesNames.length - 1];
                                             System.arraycopy(entriesNames, 0, forbidden, 0, position);
                                             System.arraycopy(entriesNames, position + 1, forbidden, position, forbidden.length - position);
-                                            new InputDialog(context, forbidden, new Callback() {
+                                            new InputDialog(context, forbidden, entriesNames[position], new Callback() {
                                                 @Override
                                                 public void call(Object result) {
                                                     String name = (String) result;

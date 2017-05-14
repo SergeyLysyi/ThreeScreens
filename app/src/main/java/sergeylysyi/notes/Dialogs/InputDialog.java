@@ -15,13 +15,26 @@ class InputDialog {
     private final AlertDialog dialog;
 
     /**
-     * @param context Activity context.
+     * @param context          Activity context.
      * @param forbiddenStrings Forbidden result values.
-     * @param callback Called with successful input. Result will be not empty String.
+     * @param callback         Called with successful input. Result will be not empty String.
      */
     InputDialog(final Context context, final String[] forbiddenStrings, final Callback callback) {
+        this(context, forbiddenStrings, null, callback);
+    }
+
+    /**
+     * @param context          Activity context.
+     * @param forbiddenStrings Forbidden result values.
+     * @param callback         Called with successful input. Result will be not empty String.
+     * @param textToFill       Fill TextView with that text. Use null to left empty.
+     */
+    InputDialog(final Context context, final String[] forbiddenStrings,String textToFill, final Callback callback) {
         final EditText input = new EditText(context);
         input.setHint(R.string.dialog_manage_filters_input_hint);
+        if (textToFill != null) {
+            input.setText(textToFill);
+        }
         dialog = new AlertDialog.Builder(context)
                 .setTitle(R.string.dialog_filter_manager_input_title)
                 .setView(input)

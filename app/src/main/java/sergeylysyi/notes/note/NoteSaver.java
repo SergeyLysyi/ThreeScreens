@@ -277,6 +277,12 @@ public class NoteSaver extends SQLiteOpenHelper {
         public Query() {
         }
 
+        public Query fromFilter(QueryFilter filter) {
+            return this
+                    .sorted(filter.sortField, filter.sortOrder)
+                    .betweenDatesOf(filter.dateField, filter.after, filter.before);
+        }
+
         public Query sorted(NoteSortField byColumn, NoteSortOrder withOrder) {
             if (byColumn != null) {
                 switch (byColumn) {

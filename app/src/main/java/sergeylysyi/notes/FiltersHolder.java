@@ -119,8 +119,22 @@ public class FiltersHolder {
         return String.valueOf(i);
     }
 
-    public final NoteSaver.QueryFilter getCurrentFilter() {
-        return currentFilter;
+    public NoteSaver.QueryFilter getCurrentFilterCopy() {
+        NoteSaver.QueryFilter filter = new NoteSaver.QueryFilter();
+        filter.sortField = currentFilter.sortField != null ? currentFilter.sortField : defaultFilter.sortField;
+        filter.sortOrder = currentFilter.sortOrder != null ? currentFilter.sortOrder : defaultFilter.sortOrder;
+        filter.dateField = currentFilter.dateField != null ? currentFilter.dateField : defaultFilter.dateField;
+        filter.after = currentFilter.after != null ? currentFilter.after : defaultFilter.after;
+        filter.before = currentFilter.before != null ? currentFilter.before : defaultFilter.before;
+        return filter;
+    }
+
+    public void setCurrentFilterFrom(NoteSaver.QueryFilter filter) {
+        currentFilter.sortField = filter.sortField != null ? filter.sortField : defaultFilter.sortField;
+        currentFilter.sortOrder = filter.sortOrder != null ? filter.sortOrder : defaultFilter.sortOrder;
+        currentFilter.dateField = filter.dateField != null ? filter.dateField : defaultFilter.dateField;
+        currentFilter.after = filter.after != null ? filter.after : defaultFilter.after;
+        currentFilter.before = filter.before != null ? filter.before : defaultFilter.before;
     }
 
     public final String[] getFilterNames() {
@@ -128,14 +142,11 @@ public class FiltersHolder {
     }
 
     public void add(String filterName) {
-        if (filterName == null || filterName.length() < 1){
-            throw new IllegalArgumentException("Filter name can't be null or empty.");
-        }
         String[] afterAddition = new String[names.length + 1];
         afterAddition[0] = filterName;
         System.arraycopy(names, 0, afterAddition, 1, names.length);
         names = afterAddition;
-        filters.add(0, currentFilter);
+        filters.add(0, new NoteSaver.QueryFilter(currentFilter));
     }
 
     public void remove(int[] deleted) {
@@ -161,8 +172,14 @@ public class FiltersHolder {
             i++;
         }
         currentFilter = new NoteSaver.QueryFilter(filters.get(i));
+        if (filters.size() != names.length){
+            throw new IndexOutOfBoundsException();
+        }
     }
 
+    /**
+     * reset current filter to default
+     */
     public void reset() {
         currentFilter = new NoteSaver.QueryFilter(defaultFilter);
     }

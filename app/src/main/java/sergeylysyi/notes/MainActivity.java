@@ -51,19 +51,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private static final String KEY_PREFIX = FiltersHolder.class.getName().concat("_");
     private static final String KEY_VERSION = KEY_PREFIX.concat("version");
     private static final String KEY_FILTER_SAVED = KEY_PREFIX.concat("filter_saved");
-
+    private final NoteSaver.NoteSortOrder defaultSortOrderPreference = NoteSaver.NoteSortOrder.descending;
+    private final NoteSaver.NoteSortField defaultSortFieldPreference = NoteSaver.NoteSortField.created;
+    private final NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
     private List<Note> allNotes = new ArrayList<>();
     private NoteListAdapter adapter;
     private NoteSaver saver;
-
     private DialogInvoker dialogInvoker;
-
     private FiltersHolder filtersHolder;
-
-    private NoteSaver.NoteSortOrder defaultSortOrderPreference = NoteSaver.NoteSortOrder.descending;
-    private NoteSaver.NoteSortField defaultSortFieldPreference = NoteSaver.NoteSortField.created;
-    private NoteSaver.NoteDateField defaultDateFieldPreference = NoteSaver.NoteDateField.edited;
-
     private boolean search_on = false;
     private MenuItem searchMenuItem = null;
 
@@ -162,7 +157,23 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void reloadNotes() {
-        onSortDialogResult(filtersHolder.getCurrentFilter());
+        onSortDialogResult(filtersHolder.getCurrentFilterCopy());
+    }
+
+    private void updateNotesFromSaver() {
+        NoteSaver.Query query = saver.new Query().fromFilter(filtersHolder.getCurrentFilterCopy());
+        System.out.println(filtersHolder.getCurrentFilterCopy().sortField);
+        System.out.println(filtersHolder.getCurrentFilterCopy().sortOrder);
+        updateNotesByQuery(query);
+    }
+
+    private void updateNotesFromSaver(NoteSaver.Query query) {
+        query.fromFilter(filtersHolder.getCurrentFilterCopy());
+        updateNotesByQuery(query);
+    }
+
+    private void searchSubstring(String inTitle, String inDescription) {
+        updateNotesByQuery(saver.new Query().withSubstring(inTitle, inDescription));
     }
 
     private void updateNotesByQuery(NoteSaver.Query query) {
@@ -171,7 +182,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         adapter.notifyDataSetChanged();
     }
 
-    private void updateNotesFromByList(List<Note> noteList) {
+    private void updateNotesFromList(List<Note> noteList) {
         allNotes.removeAll(allNotes);
         allNotes.addAll(noteList);
         saver.repopulateWith(allNotes);
@@ -232,7 +243,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         Type listMyData = Types.newParameterizedType(List.class, ArrayNoteJson.NoteJson.class);
         JsonAdapter<List<ArrayNoteJson.NoteJson>> jsonAdapter = moshi.adapter(listMyData);
         List<ArrayNoteJson.NoteJson> notesJson = jsonAdapter.fromJson(json);
-        updateNotesFromByList(ArrayNoteJson.unwrap(notesJson));
+        updateNotesFromList(ArrayNoteJson.unwrap(notesJson));
     }
 
     private void importNotesFromFile(String filename) {
@@ -365,7 +376,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                 launchPickFile();
                 break;
             case R.id.action_sort:
-                NoteSaver.QueryFilter queryFilter = filtersHolder.getCurrentFilter();
+                NoteSaver.QueryFilter queryFilter = filtersHolder.getCurrentFilterCopy();
                 dialogInvoker.sortDialog(queryFilter.sortField, queryFilter.sortOrder, this);
                 break;
             case R.id.action_filter:
@@ -413,18 +424,20 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
     @Override
     public void onSortDialogResult(NoteSaver.QueryFilter result) {
-        updateNotesByQuery(saver.new Query().sorted(result.sortField, result.sortOrder));
+        filtersHolder.setCurrentFilterFrom(result);
+        updateNotesFromSaver();
     }
 
     @Override
     public void onFilterDialogResult(NoteSaver.QueryFilter result) {
-        updateNotesByQuery(saver.new Query().betweenDatesOf(result.dateField, result.after, result.before));
+        filtersHolder.setCurrentFilterFrom(result);
+        updateNotesFromSaver();
     }
 
     @Override
     public void onSearchDialogResult(DialogInvoker.SearchDialogResult result) {
         if (!(result.title == null && result.description == null)) {
-            updateNotesByQuery(saver.new Query().withSubstring(result.title, result.description));
+            searchSubstring(result.title, result.description);
         } else {
             onSortCancel();
         }
@@ -445,7 +458,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     public void onApplyFilterEntry(String entryName) {
         System.out.println("chosen entry is " + entryName);
         filtersHolder.apply(entryName);
-        //TODO: reload notes
+        updateNotesFromSaver();
     }
 
     @Override
