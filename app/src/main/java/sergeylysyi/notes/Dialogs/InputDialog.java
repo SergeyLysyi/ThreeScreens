@@ -29,7 +29,7 @@ class InputDialog {
      * @param callback         Called with successful input. Result will be not empty String.
      * @param textToFill       Fill TextView with that text. Use null to left empty.
      */
-    InputDialog(final Context context, final String[] forbiddenStrings,String textToFill, final Callback callback) {
+    InputDialog(final Context context, final String[] forbiddenStrings, String textToFill, final Callback callback) {
         final EditText input = new EditText(context);
         input.setHint(R.string.dialog_manage_filters_input_hint);
         if (textToFill != null) {
@@ -41,6 +41,8 @@ class InputDialog {
                 .setNegativeButton(R.string.dialog_negative_button, null)
                 .setPositiveButton(R.string.dialog_positive_button, null)
                 .create();
+
+        // button listener is set here to keep dialog open if editing failed
         dialog.setOnShowListener(new DialogInterface.OnShowListener() {
             @Override
             public void onShow(final DialogInterface d) {

@@ -6,29 +6,26 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.support.annotation.IdRes;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.PopupMenu;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.DatePicker;
 import android.widget.EditText;
-import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
-import android.widget.TimePicker;
 
 import java.text.SimpleDateFormat;
 import java.util.GregorianCalendar;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import sergeylysyi.notes.R;
 import sergeylysyi.notes.note.NoteSaver;
 
 public class DialogInvoker {
 
+    public static final String DATE_FORMAT = "yyyy-MM-dd";
+    public static final String TIME_FORMAT = "HH:mm";
     private final Context context;
 
     public DialogInvoker(Activity context) {
@@ -98,48 +95,54 @@ public class DialogInvoker {
     public void searchDialog(final ResultListener listener) {
         LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         final View v = inflater.inflate(R.layout.search_layout, null);
+        Callback listenerCallback = new Callback() {
+            @Override
+            public void call(Object result) {
+                String[] stringResult = (String[]) result;
+                DialogInvoker.SearchDialogResult searchResult = new DialogInvoker.SearchDialogResult();
+                searchResult.title = stringResult[0];
+                searchResult.description = stringResult[1];
+                listener.onSearchDialogResult(searchResult);
+            }
+        };
         final Dialog d = new AlertDialog.Builder(context, 0)
                 .setTitle(R.string.dialog_search_title)
                 .setView(v)
                 .setNegativeButton(R.string.dialog_negative_button, null)
-                .setPositiveButton(R.string.dialog_search_positive_button, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String patternTitle = ((EditText) v.findViewById(R.id.search_field_title))
-                                .getText()
-                                .toString();
-                        String patternDescription = ((EditText) v.findViewById(R.id.search_field_description))
-                                .getText()
-                                .toString();
-                        if (patternTitle.length() + patternDescription.length() > 0) {
-                            SearchDialogResult result = new SearchDialogResult();
-                            result.title = patternTitle;
-                            result.description = patternDescription;
-                            listener.onSearchDialogResult(result);
-                        }
-                    }
-                })
+                .setPositiveButton(R.string.dialog_search_positive_button,
+                        new SearchClickListener(
+                                (EditText) v.findViewById(R.id.search_field_title),
+                                (EditText) v.findViewById(R.id.search_field_description),
+                                listenerCallback))
                 .setOnCancelListener(new DialogInterface.OnCancelListener() {
                     @Override
                     public void onCancel(DialogInterface dialog) {
-                        listener.onSortCancel();
+                        listener.onSearchCancel();
                     }
                 })
                 .create();
         d.show();
     }
 
-    public void filterDialog(final ResultListener listener) {
+    public void filterDialog(NoteSaver.QueryFilter currentFilter, final ResultListener listener) {
+        final SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
+        final SimpleDateFormat timeFormat = new SimpleDateFormat(TIME_FORMAT);
         LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        final View v = inflater.inflate(R.layout.filter_layout, null);
+
         final NoteSaver.NoteDateField[] dateField = new NoteSaver.NoteDateField[1];
-        final GregorianCalendar[] after = new GregorianCalendar[1];
-        final GregorianCalendar[] before = new GregorianCalendar[1];
-        final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-        final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm");
-        dateField[0] = NoteSaver.NoteDateField.created;
-        after[0] = null;
-        before[0] = null;
+        dateField[0] = currentFilter.dateField;
+        final AtomicBoolean afterSet = new AtomicBoolean(false);
+        final AtomicBoolean beforeSet = new AtomicBoolean(true);
+        if (currentFilter.after != null) {
+            afterSet.set(true);
+        }
+        if (currentFilter.before != null) {
+            beforeSet.set(true);
+        }
+        final GregorianCalendar after = new GregorianCalendar();
+        final GregorianCalendar before = new GregorianCalendar();
+
+        final View v = inflater.inflate(R.layout.filter_layout, null);
         final Dialog d = new AlertDialog.Builder(context, 0)
                 .setTitle(R.string.dialog_filter_title)
                 .setView(v)
@@ -149,154 +152,68 @@ public class DialogInvoker {
                     public void onClick(DialogInterface dialog, int which) {
                         NoteSaver.QueryFilter result = new NoteSaver.QueryFilter();
                         result.dateField = dateField[0];
-                        result.after = after[0];
-                        result.before = before[0];
+                        if (afterSet.get())
+                            result.after = after;
+                        if (beforeSet.get())
+                            result.before = before;
                         listener.onFilterDialogResult(result);
                     }
                 })
                 .create();
         d.show();
         final TextView tv = (TextView) v.findViewById(R.id.column_filter);
-        final String[] fields = new String[]{"Created", "Edited", "Viewed"};
+        final String[] fields = new String[]{
+                context.getString(R.string.dialog_filter_field_created),
+                context.getString(R.string.dialog_filter_field_edited),
+                context.getString(R.string.dialog_filter_field_viewed)};
         tv.setText(fields[dateField[0].ordinal()]);
-        tv.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                new AlertDialog.Builder(context, 0)
-                        .setTitle(R.string.dialog_pick_time_title)
-                        .setItems(fields, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                dateField[0] = NoteSaver.NoteDateField.values()[which];
-                                tv.setText(fields[which]);
-                            }
-                        })
-                        .setNegativeButton(R.string.dialog_negative_button, null)
-                        .create()
-                        .show();
-            }
-        });
+        tv.setOnClickListener(
+                new CriteriaDialog(context, fields, new Callback() {
+                    @Override
+                    public void call(Object result) {
+                        int which = (int) result;
+                        dateField[0] = NoteSaver.NoteDateField.values()[which];
+                        tv.setText(fields[which]);
+                    }
+                }));
 
-        v.findViewById(R.id.time_after_filter).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final TimePicker tp = new TimePicker(context);
-                //TODO:set hour, minute
-                final TextView tv = (TextView) v;
-                new AlertDialog.Builder(context, 0)
-                        .setTitle(R.string.dialog_pick_time_title)
-                        .setView(tp)
-                        .setNegativeButton(R.string.dialog_negative_button, null)
-                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                if (after[0] == null) {
-                                    after[0] = new GregorianCalendar();
-                                }
-                                after[0].set(GregorianCalendar.HOUR, tp.getCurrentHour());
-                                after[0].set(GregorianCalendar.MINUTE, tp.getCurrentMinute());
-                                tv.setText(timeFormat.format(after[0].getTime()));
-                            }
-                        })
-                        .create()
-                        .show();
-            }
-        });
-        v.findViewById(R.id.date_after_filter).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final DatePicker dp = new DatePicker(context);
-                //TODO: set date
-                final TextView tv = (TextView) v;
-                new AlertDialog.Builder(context, 0)
-                        .setTitle(R.string.dialog_pick_date)
-                        .setView(dp)
-                        .setNegativeButton(R.string.dialog_negative_button, null)
-                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                if (after[0] == null) {
-                                    after[0] = new GregorianCalendar();
-                                }
-                                after[0].set(dp.getYear(), dp.getMonth(), dp.getDayOfMonth());
-                                tv.setText(dateFormat.format(after[0].getTime()));
-                            }
-                        })
-                        .create()
-                        .show();
-            }
-        });
+        v.findViewById(R.id.time_after_filter).setOnClickListener(
+                new TimePickerDialog(context, timeFormat, after, afterSet, null));
+        v.findViewById(R.id.date_after_filter).setOnClickListener(
+                new DatePickerDialog(context, dateFormat, after, afterSet, null));
 
-        v.findViewById(R.id.time_before_filter).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final TimePicker tp = new TimePicker(context);
-                //TODO:set hour, minute
-                final TextView tv = (TextView) v;
-                new AlertDialog.Builder(context, 0)
-                        .setTitle(R.string.dialog_pick_time_title)
-                        .setView(tp)
-                        .setNegativeButton(R.string.dialog_negative_button, null)
-                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                if (before[0] == null) {
-                                    before[0] = new GregorianCalendar();
-                                }
-                                before[0].set(GregorianCalendar.HOUR, tp.getCurrentHour());
-                                before[0].set(GregorianCalendar.MINUTE, tp.getCurrentMinute());
-                                tv.setText(timeFormat.format(before[0].getTime()));
-                            }
-                        })
-                        .create()
-                        .show();
-            }
-        });
-        v.findViewById(R.id.date_before_filter).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                final DatePicker dp = new DatePicker(context);
-                //TODO: set date
-                final TextView tv = (TextView) v;
-                new AlertDialog.Builder(context, 0)
-                        .setTitle(R.string.dialog_pick_date)
-                        .setView(dp)
-                        .setNegativeButton(R.string.dialog_negative_button, null)
-                        .setPositiveButton(R.string.dialog_positive_button, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                if (before[0] == null) {
-                                    before[0] = new GregorianCalendar();
-                                }
-                                before[0].set(dp.getYear(), dp.getMonth(), dp.getDayOfMonth());
-                                tv.setText(dateFormat.format(before[0].getTime()));
-                            }
-                        })
-                        .create()
-                        .show();
-            }
-        });
+        v.findViewById(R.id.time_before_filter).setOnClickListener(
+                new TimePickerDialog(context, timeFormat, before, beforeSet, null));
+        v.findViewById(R.id.date_before_filter).setOnClickListener(
+                new DatePickerDialog(context, dateFormat, before, beforeSet, null));
     }
 
     public void manageFiltersDialog(final String[] entriesNames, final ManageFiltersResultListener listener) {
         final Set<Integer> deletedFilters = new HashSet<>();
         final String[] localNames = new String[entriesNames.length];
         System.arraycopy(entriesNames, 0, localNames, 0, localNames.length);
-        final boolean[] edited = new boolean[1];
+        final AtomicBoolean edited = new AtomicBoolean(false);
+
+        final Callback editedOrDeletedCall = new Callback() {
+            @Override
+            public void call(Object result) {
+                if (edited.get() || !deletedFilters.isEmpty()) {
+                    int[] deleted = new int[deletedFilters.size()];
+                    int i = 0;
+                    for (Integer index : deletedFilters) {
+                        deleted[i] = index;
+                        i++;
+                    }
+                    listener.onEditFilterEntries(deleted);
+                }
+            }
+        };
         final AlertDialog d = new AlertDialog.Builder(context)
                 .setTitle(R.string.dialog_manage_filters_title)
                 .setNegativeButton(R.string.dialog_close, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        if (edited[0] || !deletedFilters.isEmpty()) {
-                            int[] deleted = new int[deletedFilters.size()];
-                            int i = 0;
-                            for (Integer index : deletedFilters) {
-                                deleted[i] = index;
-                                i++;
-                            }
-                            listener.onEditFilterEntries(deleted);
-                        }
+                        editedOrDeletedCall.call(null);
                     }
                 })
                 .setNeutralButton(R.string.dialog_manage_filters_add, null)
@@ -304,21 +221,16 @@ public class DialogInvoker {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         listener.onApplyFilterEntry(entriesNames[which]);
-                        if (edited[0] || !deletedFilters.isEmpty()) {
-                            int[] deleted = new int[deletedFilters.size()];
-                            int i = 0;
-                            for (Integer index : deletedFilters) {
-                                deleted[i] = index;
-                                i++;
-                            }
-                            listener.onEditFilterEntries(deleted);
-                        }
+                        editedOrDeletedCall.call(null);
                     }
                 })
                 .create();
         d.setOnShowListener(new DialogInterface.OnShowListener() {
             @Override
             public void onShow(DialogInterface dialog) {
+                d.getListView().setOnItemLongClickListener(
+                        new ListItemLongClickListener(context, entriesNames, deletedFilters, localNames, edited));
+                // button listener is set here to keep dialog open if addition failed
                 d.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(
                         new View.OnClickListener() {
                             @Override
@@ -328,78 +240,11 @@ public class DialogInvoker {
                                     public void call(Object result) {
                                         d.dismiss();
                                         listener.onAddFilterEntry((String) result);
-                                        if (edited[0] || !deletedFilters.isEmpty()) {
-                                            int[] deleted = new int[deletedFilters.size()];
-                                            int i = 0;
-                                            for (Integer index : deletedFilters) {
-                                                deleted[i] = index;
-                                                i++;
-                                            }
-                                            listener.onEditFilterEntries(deleted);
-                                        }
+                                        editedOrDeletedCall.call(null);
                                     }
                                 }).show();
                             }
                         });
-
-                ListView lv = d.getListView();
-                lv.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-                    @Override
-                    public boolean onItemLongClick(AdapterView<?> parent, final View view, final int position, final long id) {
-                        PopupMenu menu = new PopupMenu(context, view);
-                        if (!deletedFilters.contains(position)) {
-                            menu.getMenuInflater().inflate(R.menu.dialog_filter_item_actions_menu, menu.getMenu());
-                            menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                                @Override
-                                public boolean onMenuItemClick(MenuItem item) {
-                                    switch (item.getItemId()) {
-                                        case R.id.menu_delete:
-                                            localNames[position] = String.format("%s %s",
-                                                    context.getString(R.string.dialog_manage_filter_deleted_prefix),
-                                                    entriesNames[position]);
-                                            ((TextView) view).setText(localNames[position]);
-                                            deletedFilters.add(position);
-                                            return true;
-                                        case R.id.menu_edit:
-                                            String[] forbidden = new String[entriesNames.length - 1];
-                                            System.arraycopy(entriesNames, 0, forbidden, 0, position);
-                                            System.arraycopy(entriesNames, position + 1, forbidden, position, forbidden.length - position);
-                                            new InputDialog(context, forbidden, entriesNames[position], new Callback() {
-                                                @Override
-                                                public void call(Object result) {
-                                                    String name = (String) result;
-                                                    if (!entriesNames[position].equals(name)) {
-                                                        edited[0] = true;
-                                                        entriesNames[position] = name;
-                                                        localNames[position] = entriesNames[position];
-                                                        ((TextView) view).setText(localNames[position]);
-                                                    }
-                                                }
-                                            }).show();
-                                            return true;
-                                    }
-                                    return false;
-                                }
-                            });
-                        } else {
-                            menu.getMenuInflater().inflate(R.menu.dialog_filter_deleted_item_actions, menu.getMenu());
-                            menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                                @Override
-                                public boolean onMenuItemClick(MenuItem item) {
-                                    switch (item.getItemId()) {
-                                        case R.id.menu_restore:
-                                            ((TextView) view).setText(entriesNames[position]);
-                                            deletedFilters.remove(position);
-                                            return true;
-                                    }
-                                    return false;
-                                }
-                            });
-                        }
-                        menu.show();
-                        return true;
-                    }
-                });
             }
         });
         d.show();
@@ -407,8 +252,6 @@ public class DialogInvoker {
 
     public interface SortResultListener {
         void onSortDialogResult(NoteSaver.QueryFilter result);
-
-        void onSortCancel();
     }
 
     public interface FilterResultListener {
@@ -417,6 +260,8 @@ public class DialogInvoker {
 
     public interface SearchResultListener {
         void onSearchDialogResult(SearchDialogResult result);
+
+        void onSearchCancel();
     }
 
     public interface ManageFiltersResultListener {

@@ -46,11 +46,6 @@ public class FiltersHolder {
         defaultFilter.dateField = defaultDateField;
         this.defaultFilter = defaultFilter;
         this.currentFilter = new NoteSaver.QueryFilter(this.defaultFilter);
-//        names = new String[10];
-//        for (int i = 0; i < names.length; i++) {
-//            names[i] = "QueryFilter" + i;
-//            filters.add(new QueryFilter());
-//        }
     }
 
     public static FiltersHolder fromSettings(SharedPreferences settings) {
@@ -119,6 +114,9 @@ public class FiltersHolder {
         return String.valueOf(i);
     }
 
+    /**
+     * @return Copy of current filter. Sort field, order and date always not null.
+     */
     public NoteSaver.QueryFilter getCurrentFilterCopy() {
         NoteSaver.QueryFilter filter = new NoteSaver.QueryFilter();
         filter.sortField = currentFilter.sortField != null ? currentFilter.sortField : defaultFilter.sortField;
@@ -129,6 +127,11 @@ public class FiltersHolder {
         return filter;
     }
 
+    /**
+     * Set fields from filter to current filter. Null fields will be ignored.
+     *
+     * @param filter Filter from which values will be taken.
+     */
     public void setCurrentFilterFrom(NoteSaver.QueryFilter filter) {
         currentFilter.sortField = filter.sortField != null ? filter.sortField : defaultFilter.sortField;
         currentFilter.sortOrder = filter.sortOrder != null ? filter.sortOrder : defaultFilter.sortOrder;
@@ -172,7 +175,7 @@ public class FiltersHolder {
             i++;
         }
         currentFilter = new NoteSaver.QueryFilter(filters.get(i));
-        if (filters.size() != names.length){
+        if (filters.size() != names.length) {
             throw new IndexOutOfBoundsException();
         }
     }
