@@ -1,10 +1,12 @@
 package sergeylysyi.notes;
 
 import android.Manifest;
+import android.content.ActivityNotFoundException;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -51,6 +53,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     public static final String DEFAULT_NOTE_TITLE = "Note";
     public static final String DEFAULT_NOTE_DESCRIPTION = "Hello";
     public static final String CHARSET_DEFAULT = "UTF-8";
+    public static final String KEY_SEARCH_STRINGS = "search strings";
     private static final int IMPORT_REQUEST_CODE = 10;
     private static final int EXPORT_REQUEST_CODE = 11;
     private static final int REQUEST_WRITE_STORAGE = 13;
@@ -68,6 +71,8 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     private FiltersHolder filtersHolder;
     private boolean search_on = false;
     private MenuItem searchMenuItem = null;
+    private String searchInTitle;
+    private String searchInDescription;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -87,6 +92,17 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         lv.setAdapter(adapter);
         lv.setEmptyView(findViewById(R.id.empty));
 
+        if (savedInstanceState != null) {
+            String[] searchStrings = savedInstanceState.getStringArray(KEY_SEARCH_STRINGS);
+            if (searchStrings != null) {
+                searchInTitle = searchStrings[0];
+                searchInDescription = searchStrings[1];
+                if (searchInTitle != null || searchInDescription != null) {
+                    enableSearch();
+                }
+            }
+        }
+
         SharedPreferences settings = getPreferences(MODE_PRIVATE);
 
         String version = settings.getString(KEY_VERSION, null);
@@ -101,7 +117,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
             );
         }
 
-        resetFilterAndUpdate();
+        updateNotesFromSaver();
     }
 
     public void launchEdit(Note note) {
@@ -172,13 +188,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void updateNotesFromSaver() {
-        NoteSaver.Query query = saver.new Query().fromFilter(filtersHolder.getCurrentFilterCopy());
-        updateNotesByQuery(query);
+        updateNotesByQuery(saver.new Query());
     }
 
     private void updateNotesByQuery(NoteSaver.Query query) {
         allNotes.removeAll(allNotes);
-        allNotes.addAll(query.get());
+        allNotes.addAll(query
+                .fromFilter(filtersHolder.getCurrentFilterCopy())
+                .withSubstring(searchInTitle, searchInDescription).get());
         adapter.notifyDataSetChanged();
     }
 
@@ -190,7 +207,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     }
 
     private void searchSubstring(String inTitle, String inDescription) {
-        updateNotesByQuery(saver.new Query().withSubstring(inTitle, inDescription));
+        searchInTitle = inTitle;
+        searchInDescription = inDescription;
+        updateNotesFromSaver();
     }
 
     private void launchPickFile() {
@@ -198,6 +217,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
             startActivityForResult(theIntent, IMPORT_REQUEST_CODE);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.import_no_file_manager, Toast.LENGTH_LONG).show();
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -209,6 +231,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
             startActivityForResult(theIntent, EXPORT_REQUEST_CODE);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, R.string.export_no_file_manager, Toast.LENGTH_LONG).show();
+            e.printStackTrace();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -359,6 +384,8 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.mainmenu, menu);
+        searchMenuItem = menu.findItem(R.id.action_search);
+        updateSearchIcon();
         return true;
     }
 
@@ -383,12 +410,8 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                 dialogInvoker.filterDialog(filtersHolder.getCurrentFilterCopy(), this);
                 break;
             case R.id.action_search:
-                if (searchMenuItem == null) {
-                    searchMenuItem = item;
-                }
                 if (!search_on) {
-                    search_on = true;
-                    searchMenuItem.setIcon(getResources().getDrawable(android.R.drawable.ic_menu_close_clear_cancel));
+                    enableSearch();
                     dialogInvoker.searchDialog(this);
                 } else {
                     clearSearch();
@@ -402,11 +425,35 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         return super.onOptionsItemSelected(item);
     }
 
+
     private void clearSearch() {
+        search_on = false;
+        searchInTitle = null;
+        searchInDescription = null;
+        updateSearchIcon();
+    }
+
+    private void enableSearch() {
+        search_on = true;
+        updateSearchIcon();
+    }
+
+    private void updateSearchIcon() {
+        final Drawable searchIcon;
         if (search_on) {
-            search_on = false;
-            searchMenuItem.setIcon(getResources().getDrawable(android.R.drawable.ic_menu_search));
+            searchIcon = getResources().getDrawable(android.R.drawable.ic_menu_close_clear_cancel);
+        } else {
+            searchIcon = getResources().getDrawable(android.R.drawable.ic_menu_search);
         }
+        if (searchMenuItem != null) {
+            searchMenuItem.setIcon(searchIcon);
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putStringArray(KEY_SEARCH_STRINGS, new String[]{searchInTitle, searchInDescription});
     }
 
     @Override
@@ -449,8 +496,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
     @Override
     public void onSearchCancel() {
-        search_on = false;
-        searchMenuItem.setIcon(getResources().getDrawable(android.R.drawable.ic_menu_search));
+        clearSearch();
     }
 
     @Override
