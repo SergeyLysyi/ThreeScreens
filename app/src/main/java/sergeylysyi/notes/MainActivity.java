@@ -54,6 +54,8 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     public static final String DEFAULT_NOTE_DESCRIPTION = "Hello";
     public static final String CHARSET_DEFAULT = "UTF-8";
     public static final String KEY_SEARCH_STRINGS = "search strings";
+    public static final String DEFAULT_IMPORT_FILE_PATH = "itemlist.ili";
+    public static final String DEFAULT_EXPORT_FILE_PATH = "itemlist.ili";
     private static final int IMPORT_REQUEST_CODE = 10;
     private static final int EXPORT_REQUEST_CODE = 11;
     private static final int REQUEST_WRITE_STORAGE = 13;
@@ -216,10 +218,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         Intent theIntent = new Intent(Intent.ACTION_PICK);
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
-            startActivityForResult(theIntent, IMPORT_REQUEST_CODE);
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, R.string.import_no_file_manager, Toast.LENGTH_LONG).show();
-            e.printStackTrace();
+            try {
+                startActivityForResult(theIntent, IMPORT_REQUEST_CODE);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, R.string.import_no_file_manager, Toast.LENGTH_LONG).show();
+                theIntent = new Intent();
+                theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(DEFAULT_IMPORT_FILE_PATH)));
+                onActivityResult(IMPORT_REQUEST_CODE, RESULT_OK, theIntent);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -230,10 +236,14 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         Intent theIntent = new Intent(Intent.ACTION_PICK);
         theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)));
         try {
-            startActivityForResult(theIntent, EXPORT_REQUEST_CODE);
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, R.string.export_no_file_manager, Toast.LENGTH_LONG).show();
-            e.printStackTrace();
+            try {
+                startActivityForResult(theIntent, EXPORT_REQUEST_CODE);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, R.string.export_no_file_manager, Toast.LENGTH_LONG).show();
+                theIntent = new Intent();
+                theIntent.setData(Uri.fromFile(Environment.getExternalStoragePublicDirectory(DEFAULT_EXPORT_FILE_PATH)));
+                onActivityResult(EXPORT_REQUEST_CODE, RESULT_OK, theIntent);
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -354,7 +364,9 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                 }
                 case EXPORT_REQUEST_CODE: {
                     if (data != null && data.getData() != null) {
+                        System.out.println("export onActRes");
                         String theFilePath = data.getData().getPath();
+                        System.out.println(theFilePath);
                         exportNotesToFile(theFilePath);
                     }
                     break;
