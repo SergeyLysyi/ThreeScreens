@@ -56,6 +56,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
     public static final String KEY_SEARCH_STRINGS = "search strings";
     public static final String DEFAULT_IMPORT_FILE_PATH = "itemlist.ili";
     public static final String DEFAULT_EXPORT_FILE_PATH = "itemlist.ili";
+    public static final int NEW_NOTE_INTENT_ID = -1;
     private static final int IMPORT_REQUEST_CODE = 10;
     private static final int EXPORT_REQUEST_CODE = 11;
     private static final int REQUEST_WRITE_STORAGE = 13;
@@ -124,7 +125,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
 
     public void launchEdit(Note note) {
         Intent intent = new Intent(this, EditActivity.class);
-        fillIntentWithNoteInfo(intent, note, allNotes.indexOf(note));
+        fillIntentWithNoteInfo(intent, note, (int) note.getID());
         note.updateOpenDate();
         // save new open date for note to db
         saver.insertOrUpdate(note);
@@ -168,7 +169,7 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
                 new Note(getDefaultNoteTitleTextWithIndex(noteIndex),
                         DEFAULT_NOTE_DESCRIPTION,
                         getResources().getColor(R.color.colorPrimary)),
-                noteIndex);
+                NEW_NOTE_INTENT_ID);
         startActivityForResult(intent, EditActivity.EDIT_NOTE);
     }
 
@@ -333,25 +334,19 @@ public class MainActivity extends AppCompatActivity implements DialogInvoker.Res
         if (resultCode == RESULT_OK) {
             switch (requestCode) {
                 case EditActivity.EDIT_NOTE:
-                    int index = data.getIntExtra(INTENT_KEY_NOTE_INDEX, -1);
+                    int noteID = data.getIntExtra(INTENT_KEY_NOTE_INDEX, -1);
                     Note note;
 
-                    try {
-                        note = allNotes.get(index);
-                    } catch (IndexOutOfBoundsException ex) {
-                        // if new note was created
-                        if (index == allNotes.size()) {
-                            note = new Note();
-                            allNotes.add(note);
-                        } else {
-                            throw ex;
-                        }
+                    if (!(noteID >= 0 && (note = saver.new Query().getSingleByID(noteID)) != null)) {
+                        note = new Note();
+                        allNotes.add(note);
                     }
                     if (data.getBooleanExtra(INTENT_KEY_NOTE_IS_CHANGED, false)) {
                         editNote(note,
                                 data.getStringExtra(INTENT_KEY_NOTE_TITLE),
                                 data.getStringExtra(INTENT_KEY_NOTE_DESCRIPTION),
                                 data.getIntExtra(INTENT_KEY_NOTE_COLOR, note.getColor()));
+                        saver.examine_debug();
                     }
                     break;
 

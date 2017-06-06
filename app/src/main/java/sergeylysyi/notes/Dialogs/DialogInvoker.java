@@ -261,8 +261,8 @@ public class DialogInvoker {
                 .setItems(localNames, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        listener.onApplyFilterEntry(entriesNames[which]);
                         editedOrDeletedCall.call(null);
+                        listener.onApplyFilterEntry(entriesNames[which]);
                     }
                 })
                 .create();
@@ -280,8 +280,8 @@ public class DialogInvoker {
                                     @Override
                                     public void call(Object result) {
                                         d.dismiss();
-                                        listener.onAddFilterEntry((String) result);
                                         editedOrDeletedCall.call(null);
+                                        listener.onAddFilterEntry((String) result);
                                     }
                                 }).show();
                             }

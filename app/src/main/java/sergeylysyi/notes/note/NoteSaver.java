@@ -53,7 +53,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
         long result = db.insert(TABLE_NOTES, null, values);
-        note._id = result;
+        note.setID(result);
         return result;
     }
 
@@ -67,7 +67,7 @@ public class NoteSaver extends SQLiteOpenHelper {
         values.put(COLUMN_EDITED, note.getEdited());
         values.put(COLUMN_VIEWED, note.getViewed());
         String selection = COLUMN_ID + " = ?";
-        String[] selectionArgs = {String.valueOf(note._id)};
+        String[] selectionArgs = {String.valueOf(note.getID())};
         try {
             return db.update(TABLE_NOTES, values, selection, selectionArgs);
         } finally {
@@ -91,7 +91,7 @@ public class NoteSaver extends SQLiteOpenHelper {
     public int deleteNote(Note note) {
         SQLiteDatabase db = getWritableDatabase();
         String selection = COLUMN_ID + " = ?";
-        String[] selectionArgs = {String.valueOf(note._id)};
+        String[] selectionArgs = {String.valueOf(note.getID())};
         try {
             return db.delete(TABLE_NOTES, selection, selectionArgs);
         } finally {
@@ -128,6 +128,40 @@ public class NoteSaver extends SQLiteOpenHelper {
             }
             db.close();
         }
+    }
+
+    private Note getSingleByID(long id) {
+        SQLiteDatabase db = getReadableDatabase();
+        String[] columns = {COLUMN_ID, COLUMN_TITLE, COLUMN_DESCRIPTION, COLUMN_COLOR,
+                COLUMN_CREATED, COLUMN_EDITED, COLUMN_VIEWED};
+        String selection = COLUMN_ID + " = ?";
+        String[] selectionArgs = {String.valueOf(id)};
+        Cursor cursor = null;
+        Note note = null;
+        try {
+            cursor = db.query(TABLE_NOTES, columns, selection, selectionArgs, null, null, null);
+            if (cursor.moveToFirst()) {
+                do {
+                    if (cursor.getInt(0) == id) {
+                        try {
+                            note = new Note(cursor.getString(1), cursor.getString(2), cursor.getInt(3),
+                                    cursor.getString(4), cursor.getString(5), cursor.getString(6));
+                            note.setID(cursor.getInt(0));
+                        } catch (ParseException e) {
+                            System.err.println(String.format("ParseException at %s: %d", COLUMN_ID, cursor.getInt(0)));
+                            e.printStackTrace();
+                        }
+                        break;
+                    }
+                } while (cursor.moveToNext());
+            }
+        } finally {
+            if (cursor != null && !cursor.isClosed()) {
+                cursor.close();
+            }
+            db.close();
+        }
+        return note;
     }
 
     private List<Note> getNotes(String sortByColumn, String order,
@@ -187,7 +221,7 @@ public class NoteSaver extends SQLiteOpenHelper {
                     try {
                         Note note = new Note(cursor.getString(1), cursor.getString(2), cursor.getInt(3),
                                 cursor.getString(4), cursor.getString(5), cursor.getString(6));
-                        note._id = cursor.getInt(0);
+                        note.setID(cursor.getInt(0));
                         notesBeforeDateFilter.add(note);
                     } catch (ParseException e) {
                         System.err.println(String.format("ParseException at %s: %d", COLUMN_ID, cursor.getInt(0)));
@@ -225,6 +259,10 @@ public class NoteSaver extends SQLiteOpenHelper {
                     e.printStackTrace();
                     continue;
                 }
+                if (afterDate != null)
+                System.out.println("after:" + afterDate.getTime());
+//                System.out.println("before:" + beforeDate.getTime());
+                System.out.println("current:" + c.getTime());
                 if (!((afterDate == null || c.after(afterDate)) && (beforeDate == null || c.before(beforeDate)))) {
                     notesDateFiltered.remove(note);
                 }
@@ -348,6 +386,10 @@ public class NoteSaver extends SQLiteOpenHelper {
         public List<Note> get() {
             return NoteSaver.this.getNotes(sortByColumn, sortWithOrder, titleSubstring, descriptionSubstring,
                     columnForDateFilter, afterDate, beforeDate);
+        }
+
+        public Note getSingleByID(long id) {
+            return NoteSaver.this.getSingleByID(id);
         }
     }
 }

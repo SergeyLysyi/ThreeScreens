@@ -22,12 +22,11 @@ public class Note implements Parcelable {
             return new Note[size];
         }
     };
+    public static final int NO_ID_VALUE = -1;
     private static final SimpleDateFormat date_format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZZZZZ");
     private static final String DEFAULT_TITLE = "";
     private static final String DEFAULT_DESCRIPTION = "";
-
-    //for NoteSaver purposes
-    long _id;
+    private Long _id;
 
     private String title;
     private String description;
@@ -148,6 +147,19 @@ public class Note implements Parcelable {
 
     String getViewed() {
         return Note.formatDate(lastOpenDate);
+    }
+
+    public long getID() {
+        if (_id == null)
+            return NO_ID_VALUE;
+        return _id;
+    }
+
+    public long setID(long id) {
+        if (_id == null) {
+            _id = id;
+        }
+        return getID();
     }
 
     @Override
