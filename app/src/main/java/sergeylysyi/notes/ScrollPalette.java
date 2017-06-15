@@ -1,4 +1,4 @@
-package sergeylysyi.threescreens;
+package sergeylysyi.notes;
 
 
 import android.content.Intent;
@@ -11,6 +11,8 @@ import android.os.Vibrator;
 import android.support.v7.app.AppCompatActivity;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
@@ -33,6 +35,11 @@ public class ScrollPalette extends AppCompatActivity {
     public static final float SATURATION_OFFSET_DIVIDER = 500f;
     public static final int LENGTH_OF_VIBRATION_ON_LONG_PRESS = 50;
     public static final int LENGTH_OF_VIBRATION_ON_BOUND = 10;
+    public static final String INTENT_KEY_COLOR_TO_EDIT = "color to edit";
+    public static final String INTENT_KEY_IS_CHANGED = "isChanged";
+    public static final String INTENT_KEY_COLOR = "color";
+    public static final String SAVED_KEY_CHOSEN_COLOR = "chosen_color";
+    public static final String SAVED_KEY_PALETTE = "palette_current_colors";
 
     private LinearLayout linLay;
     private SwitchingScrollView sv;
@@ -50,7 +57,7 @@ public class ScrollPalette extends AppCompatActivity {
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-        currentColor = new CurrentColor(getIntent().getIntExtra("color to edit", Color.TRANSPARENT));
+        currentColor = new CurrentColor(getIntent().getIntExtra(INTENT_KEY_COLOR_TO_EDIT, Color.TRANSPARENT));
         dynamicColor = new CurrentColor(Color.TRANSPARENT);
 
         final Vibrator vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
@@ -81,18 +88,18 @@ public class ScrollPalette extends AppCompatActivity {
         imageOfCurrentColor.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finishWithResult();
+                finishWithResult(true);
             }
         });
 
         currentColor.addTextViewForTextChange(
                 textRGB,
-                "R: %2h\nG: %2h\nB: %2h",
+                getString(R.string.palette_rgb_string_formatted),
                 CurrentColor.Palette.RGB);
 
         currentColor.addTextViewForTextChange(
                 textHSV,
-                "H: %3.2f\nS: %3.2f\nV: %3.2f",
+                getString(R.string.palette_hsv_string_formatted),
                 CurrentColor.Palette.HSV);
 
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
@@ -222,9 +229,16 @@ public class ScrollPalette extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if ((keyCode == KeyEvent.KEYCODE_BACK)) {
-            finishWithResult();
+            finishWithResult(false);
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.edit_menu, menu);
+        return true;
     }
 
     @Override
@@ -232,37 +246,41 @@ public class ScrollPalette extends AppCompatActivity {
         int id = item.getItemId();
         switch (id) {
             case android.R.id.home:
-                finishWithResult();
+                finishWithResult(false);
                 return true;
+            case R.id.action_done:
+                finishWithResult(true);
+                break;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void finishWithResult() {
-        Intent result = new Intent();
-        result.putExtra("color", currentColor.getColor());
-        setResult(RESULT_OK, result);
+    private void finishWithResult(boolean result) {
+        Intent intent = new Intent();
+        intent.putExtra(INTENT_KEY_IS_CHANGED, result);
+        intent.putExtra(INTENT_KEY_COLOR, currentColor.getColor());
+        setResult(RESULT_OK, intent);
         finish();
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
-        outState.putInt("chosen_color", currentColor.getColor());
+        outState.putInt(SAVED_KEY_CHOSEN_COLOR, currentColor.getColor());
         ArrayList<Integer> colors = new ArrayList<>(buttons.size());
         for (ColorButton b : buttons) {
             colors.add(b.getColor());
         }
-        outState.putIntegerArrayList("palette_current_colors", colors);
+        outState.putIntegerArrayList(SAVED_KEY_PALETTE, colors);
         super.onSaveInstanceState(outState);
     }
 
     @Override
     protected void onRestoreInstanceState(Bundle savedInstanceState) {
         super.onRestoreInstanceState(savedInstanceState);
-        int chosenColor = savedInstanceState.getInt("chosen_color");
+        int chosenColor = savedInstanceState.getInt(SAVED_KEY_CHOSEN_COLOR);
         currentColor.change(chosenColor);
 
-        ArrayList<Integer> currentColors = savedInstanceState.getIntegerArrayList("palette_current_colors");
+        ArrayList<Integer> currentColors = savedInstanceState.getIntegerArrayList(SAVED_KEY_PALETTE);
         if (currentColors != null) {
             this.currentColors = currentColors;
         }

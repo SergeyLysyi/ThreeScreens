@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="sergeylysyi.threescreens">
+          package="sergeylysyi.notes">
 
     <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Three Note Screens"
+        android:label="Notes"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name="sergeylysyi.threescreens.MainActivity"
-            android:label="Your Notes Screen">
+            android:name="sergeylysyi.notes.MainActivity"
+            android:label="Notes">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
@@ -21,12 +22,12 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="sergeylysyi.threescreens.EditActivity"
-            android:label="Note Content Screen">
+            android:name="sergeylysyi.notes.EditActivity"
+            android:label="Edit Note">
         </activity>
         <activity
-            android:name="sergeylysyi.threescreens.ScrollPalette"
-            android:label="Note Color Screen"/>
+            android:name="sergeylysyi.notes.ScrollPalette"
+            android:label="Choose Color"/>
     </application>
 
 </manifest>
